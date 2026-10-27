@@ -1,6 +1,7 @@
 const { default: mongoose } = require("mongoose");
 const Chat = require("../models/chat.model");
 const Message = require("../models/message.model");
+const groq = require("../config/groq.config");
 
 const createChatController = async (req, res, next) => {
   try {
@@ -114,7 +115,7 @@ const addMessageController = async (req, res, next) => {
     const { content } = req.body;
     const userId = req.userId;
 
-    // Verify that this chat belongs to the logged-in user
+    // 1. Verify chat ownership
     const chat = await Chat.findOne({
       _id: chatId,
       userId,
@@ -127,29 +128,72 @@ const addMessageController = async (req, res, next) => {
       });
     }
 
-    // Save the user's message
-    const message = await Message.create({
+    // 2. Save user's message
+    const userMessage = await Message.create({
       chatId: chat._id,
       userId,
       role: "user",
       content,
     });
 
-    // Update chat activity so it appears first in the chat list
+    // 3. Fetch recent conversation history
+    const history = await Message.find({
+      chatId: chat._id,
+      userId,
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(20)
+      .lean();
+
+    // Reverse into chronological order for the LLM
+    history.reverse();
+
+    // 4. Convert database messages to LangChain messages
+    const messages = history.map((message) => [
+      message.role === "assistant" ? "ai" : "human",
+      message.content,
+    ]);
+
+    // 5. Generate AI response
+    const aiResponse = await groq.invoke(messages);
+    const aiContent =
+      typeof aiResponse.content === "string"
+        ? aiResponse.content
+        : JSON.stringify(aiResponse.content);
+
+    // 6. Save AI response
+    const assistantMessage = await Message.create({
+      chatId: chat._id,
+      userId,
+      role: "assistant",
+      content: aiContent,
+    });
+
+    // 7. Update chat activity
     await Chat.updateOne(
       { _id: chat._id, userId },
-      { $set: { updatedAt: new Date() } },
+      { $set: { updatedAt: new Date() } }
     );
 
+    // 8. Return both messages
     return res.status(201).json({
       success: true,
-      message: "Message saved successfully",
+      message: "AI response generated successfully",
       data: {
-        _id: message._id,
-        chatId: message.chatId,
-        role: message.role,
-        content: message.content,
-        createdAt: message.createdAt,
+        userMessage: {
+          _id: userMessage._id,
+          chatId: userMessage.chatId,
+          role: userMessage.role,
+          content: userMessage.content,
+          createdAt: userMessage.createdAt,
+        },
+        assistantMessage: {
+          _id: assistantMessage._id,
+          chatId: assistantMessage.chatId,
+          role: assistantMessage.role,
+          content: assistantMessage.content,
+          createdAt: assistantMessage.createdAt,
+        },
       },
     });
   } catch (error) {
