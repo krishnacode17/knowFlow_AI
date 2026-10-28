@@ -3,6 +3,7 @@ const authMiddleware = require("../middlewares/auth.middleware")
 const { validateRequest } = require("../validators/auth.validator")
 const { createChatController, getAllChatsController, getSingleChatController, addMessageController, renameChatController, deleteChatController, deleteMessageController,  } = require("../controllers/chat.controller")
 const { createChatValidator, addMessageValidator, renameChatValidator, deleteChatValidator, deleteMessageValidator, getSingleChatValidator } = require("../validators/chat.validator")
+const { streamChatController } = require("../controllers/chatStream.controller")
 
 const chatRoutes = express.Router()
 
@@ -15,5 +16,6 @@ chatRoutes.patch("/:chatId", authMiddleware , renameChatValidator , validateRequ
 chatRoutes.delete("/:chatId", authMiddleware , deleteChatValidator, validateRequest , deleteChatController)
 chatRoutes.delete("/:chatId/messages/:messageId", authMiddleware , deleteMessageValidator, validateRequest , deleteMessageController)
 
+chatRoutes.post("/:chatId/messages/stream",authMiddleware , streamChatController)
 
 module.exports = chatRoutes

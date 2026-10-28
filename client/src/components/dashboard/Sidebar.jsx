@@ -7,8 +7,13 @@ import {
   Database,
   Settings,
   UserRound,
-  LibraryBig
+  LogOut,
+  LibraryBig,
 } from "lucide-react";
+
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
 
 const navigation = [
   {
@@ -38,13 +43,23 @@ const navigation = [
   },
 ];
 
-
-const comingSoon = [
-  { label: "Integrations", icon: Database },
-];
-
+const comingSoon = [{ label: "Integrations", icon: Database }];
 
 function Sidebar({ onNavigate }) {
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully!");
+      onNavigate?.();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      toast.error("Logout failed. Please try again.");
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* Logo */}
@@ -100,22 +115,39 @@ function Sidebar({ onNavigate }) {
       </nav>
 
       {/* User Profile UI — static for now */}
-      <div className="shrink-0 border-t border-gray-100 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eeebff] text-[#5140c9]">
-            <UserRound size={20} />
-          </div>
+      
+{/* User Profile and Logout */}
+<div className="mt-auto shrink-0 border-t border-gray-100 bg-white p-3 sm:p-4">
+  <div className="flex min-w-0 items-center gap-3">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eeebff] text-[#5140c9]">
+      <UserRound size={20} />
+    </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">
-              Your Profile
-            </p>
-            <p className="truncate text-xs text-gray-500">
-              Welcome to KnowFlow
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-semibold text-gray-900">
+        {user
+          ? `${user.firstName} ${user.lastName}`
+          : "Your Profile"}
+      </p>
+
+      <p className="truncate text-xs text-gray-500">
+        {user?.email || "Welcome to KnowFlow"}
+      </p>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    onClick={handleLogout}
+    className="mt-3 flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+  >
+    <LogOut size={18} className="shrink-0" />
+    <span>Logout</span>
+  </button>
+</div>
+
+
+
     </div>
   );
 }

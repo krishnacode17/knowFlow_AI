@@ -1,32 +1,68 @@
-const jwt = require("jsonwebtoken");
 
-const authMiddleware =async (req, res, next) => {
+const jwt = require("jsonwebtoken");
+const refreshSessionModel = require("../models/refreshSession.model");
+
+const authMiddleware = async (req, res, next) => {
   try {
     const token = req.cookies?.accessToken;
 
-
     if (!token) {
       return res.status(401).json({
-        success: false,
+        success: false, 
         message: "Authentication required",
       });
     }
 
-    const decoded = await jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.ACCESS_TOKEN_SECRET
+    );
 
+    const { userId, jti } = decoded;
 
-    req.userId = decoded.userId;
+    if (!userId || !jti) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid access token",
+      });
+    }
+
+    const session = await refreshSessionModel.findOne({
+      userId,
+      jti,
+      revokedAt: null,
+      expiresAt: { $gt: new Date() }, 
+    });
+
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired or revoked. Please log in again.",
+      });
+    }
+
+    req.userId = userId;
 
     next();
-
-    
   } catch (error) {
-    return res.status(401).json({
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError" ||
+      error.name === "NotBeforeError"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired access token",
+      });
+    }
+
+    console.error("Authentication middleware error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: "Invalid or expired access token",
+      message: "Unable to authenticate request",
     });
   }
 };
 
-
-module.exports = authMiddleware
+module.exports = authMiddleware;

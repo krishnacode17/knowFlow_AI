@@ -1,7 +1,7 @@
 const { default: mongoose } = require("mongoose");
 const Chat = require("../models/chat.model");
 const Message = require("../models/message.model");
-const groq = require("../config/groq.config");
+const aiService = require("../services/ai");
 
 const createChatController = async (req, res, next) => {
   try {
@@ -78,7 +78,7 @@ const getSingleChatController = async (req, res, next) => {
         });
       }
 
-        $or = [
+      $or = [
         { createdAt: { $lt: cursorMessage.createdAt } },
         {
           createdAt: cursorMessage.createdAt,
@@ -155,7 +155,49 @@ const addMessageController = async (req, res, next) => {
     ]);
 
     // 5. Generate AI response
-    const aiResponse = await groq.invoke(messages);
+
+    let aiResponse;
+    try {
+      aiResponse = await aiService.generateResponse(messages);
+    } catch (error) {
+      const errorMessage = error.message || "";
+
+      let statusCode = 503;
+      let message = "AI service is temporarily unavailable. Please try again.";
+
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.includes("invalid_api_key")
+      ) {
+        statusCode = 500;
+        message = "AI service configuration error.";
+      } else if (
+        errorMessage.includes("429") ||
+        errorMessage.includes("rate_limit_exceeded")
+      ) {
+        statusCode = 429;
+        message = "AI service rate limit exceeded. Please try again later.";
+      } else if (
+        error.name === "AbortError" ||
+        error.name === "TimeoutError" ||
+        errorMessage.toLowerCase().includes("timeout")
+      ) {
+        statusCode = 504;
+        message = "AI response timed out. Please try again.";
+      }
+
+      console.error("Groq API error:", {
+        message: errorMessage,
+        name: error.name,
+        statusCode,
+      });
+
+      const aiError = new Error(message);
+      aiError.statusCode = statusCode;
+
+      return next(aiError);
+    }
+
     const aiContent =
       typeof aiResponse.content === "string"
         ? aiResponse.content
@@ -172,7 +214,7 @@ const addMessageController = async (req, res, next) => {
     // 7. Update chat activity
     await Chat.updateOne(
       { _id: chat._id, userId },
-      { $set: { updatedAt: new Date() } }
+      { $set: { updatedAt: new Date() } },
     );
 
     // 8. Return both messages
@@ -217,7 +259,7 @@ const renameChatController = async (req, res, next) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     ).select("_id title createdAt updatedAt");
 
     if (!chat) {
@@ -238,9 +280,6 @@ const renameChatController = async (req, res, next) => {
 };
 
 const deleteChatController = async (req, res, next) => {
- 
-
-
   const session = await Chat.startSession();
 
   try {
@@ -254,7 +293,7 @@ const deleteChatController = async (req, res, next) => {
           _id: chatId,
           userId: req.userId,
         },
-        { session }
+        { session },
       );
 
       if (!chat) {
@@ -268,7 +307,7 @@ const deleteChatController = async (req, res, next) => {
           chatId: chat._id,
           userId: req.userId,
         },
-        { session }
+        { session },
       );
     });
 
@@ -326,7 +365,7 @@ const deleteMessageController = async (req, res, next) => {
     // 3. Update chat's activity timestamp
     await Chat.updateOne(
       { _id: chat._id, userId },
-      { $set: { updatedAt: new Date() } }
+      { $set: { updatedAt: new Date() } },
     );
 
     return res.status(200).json({
@@ -342,11 +381,6 @@ const deleteMessageController = async (req, res, next) => {
   }
 };
 
-
-
-
-
-
 module.exports = {
   createChatController,
   getAllChatsController,
@@ -354,5 +388,5 @@ module.exports = {
   addMessageController,
   renameChatController,
   deleteChatController,
-  deleteMessageController
+  deleteMessageController,
 };

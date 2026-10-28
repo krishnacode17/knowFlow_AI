@@ -58,15 +58,15 @@ const routeConfig = [
           },
           { path: "documents", element: <Documents /> },
           {
-            path: "/knowledge-base",
+            path: "knowledge-base",
             element: <KnowledgeBase />,
           },
           {
-            path: "/knowledge-base/:collectionId",
+            path: "knowledge-base/:collectionId",
             element: <KnowledgeBaseDetails />,
           },
           {
-            path: "/settings",
+            path: "settings",
             element: <Settings />,
           },
         ],

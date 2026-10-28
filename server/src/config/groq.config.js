@@ -4,6 +4,8 @@ const groq = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
   model: process.env.GROQ_MODEL,
   temperature: 0.7,
+  timeout: 30000,
+  maxRetries: 0,
 });
 
 module.exports = groq;

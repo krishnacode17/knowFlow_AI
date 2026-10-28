@@ -1,4 +1,3 @@
-
 const errorMiddleware = (err, req, res, next) => {
   console.error("API Error:", {
     message: err.message,
@@ -35,9 +34,11 @@ const errorMiddleware = (err, req, res, next) => {
   return res.status(statusCode).json({
     success: false,
     message:
-      statusCode >= 500
-        ? "Internal server error"
-        : err.message,
+      statusCode === 503
+        ? err.message
+        : statusCode >= 500
+          ? "Internal server error"
+          : err.message,
   });
 };
 

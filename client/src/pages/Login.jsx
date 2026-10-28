@@ -1,14 +1,73 @@
 import { Eye, EyeOff, BrainCircuit } from "lucide-react";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
+  const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const { login } = useAuth();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setLoading(true);
+
+    try {
+      const response = await api.post("/auth/login", {
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      if (response.data?.success === false) {
+        toast.error(response.data.message || "Login failed.");
+        return;
+      }
+
+      login(response.data.user);
+
+      toast.success("Login successful!");
+      navigate("/dashboard", { replace: true });
+
+      
+    } catch (err) {
+      const data = err.response?.data;
+      const message =
+        data?.errors?.[0]?.msg ||
+        data?.message ||
+        data?.error ||
+        "Login failed. Please check your credentials.";
+
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputClass =
+    "h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#5140c9] focus:ring-2 focus:ring-[#5140c9]/15";
 
   return (
     <main className="min-h-screen bg-[#f3f4f8] flex items-center justify-center px-4 py-8 sm:px-6">
-      {/* Login Card */}
       <div className="w-full max-w-[360px] rounded-2xl border border-gray-200 bg-white px-6 py-8 shadow-[0_12px_30px_rgba(0,0,0,0.10)] sm:px-7 sm:py-8">
-        {/* Logo */}
         <div className="mb-7 flex items-center justify-center gap-2.5">
           <BrainCircuit
             className="h-10 w-10 shrink-0 text-[#5140c9]"
@@ -19,20 +78,16 @@ function Login() {
           </span>
         </div>
 
-        {/* Heading */}
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-gray-950 sm:text-[26px]">
             Welcome back
           </h1>
-
           <p className="mx-auto mt-2 max-w-[280px] text-sm leading-5 text-gray-500">
             Continue your journey with your AI knowledge workspace.
           </p>
         </div>
 
-        {/* Form UI only — no business logic */}
-        <form className="space-y-4">
-          {/* Email */}
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label
               htmlFor="email"
@@ -40,18 +95,19 @@ function Login() {
             >
               Email
             </label>
-
             <input
               id="email"
               name="email"
               type="email"
               placeholder="Enter your email"
               autoComplete="email"
-              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#5140c9] focus:ring-2 focus:ring-[#5140c9]/15"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className={inputClass}
             />
           </div>
 
-          {/* Password */}
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <label
@@ -60,9 +116,11 @@ function Login() {
               >
                 Password
               </label>
-
               <button
                 type="button"
+                onClick={() =>
+                  toast.info("Forgot password feature is coming soon.")
+                }
                 className="text-xs text-gray-500 transition hover:text-[#5140c9] sm:text-sm"
               >
                 Forgot password?
@@ -76,9 +134,11 @@ function Login() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#5140c9] focus:ring-2 focus:ring-[#5140c9]/15"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className={`${inputClass} pr-10`}
               />
-
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
@@ -91,15 +151,14 @@ function Login() {
             </div>
           </div>
 
-          {/* Sign In */}
           <button
-            type="button"
-            className="flex h-10 w-full items-center justify-center rounded-lg bg-[#4932d0] px-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#3f2abb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4932d0] focus-visible:ring-offset-2 active:scale-[0.99]"
+            type="submit"
+            disabled={loading}
+            className="flex h-10 w-full items-center justify-center rounded-lg bg-[#4932d0] px-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#3f2abb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4932d0] focus-visible:ring-offset-2 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in"}
           </button>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 py-0.5">
             <div className="h-px flex-1 bg-gray-200" />
             <span className="shrink-0 text-sm text-gray-600">
@@ -108,9 +167,9 @@ function Login() {
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
-          {/* Google Button */}
           <button
             type="button"
+            onClick={() => toast.info("Google login is not configured yet.")}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4932d0] focus-visible:ring-offset-2"
           >
             <svg
@@ -139,15 +198,14 @@ function Login() {
           </button>
         </form>
 
-        {/* Register Link */}
         <p className="mt-5 text-center text-[13px] text-gray-700 sm:text-sm">
           Don't have an account?{" "}
-          <a
-            href="/register"
+          <Link
+            to="/register"
             className="font-medium text-[#4932d0] hover:underline"
           >
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </main>

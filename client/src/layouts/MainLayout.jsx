@@ -30,7 +30,7 @@ function MainLayout() {
             className="absolute inset-0 bg-black/40"
           />
 
-          <aside className="absolute inset-y-0 left-0 w-[260px] max-w-[85vw] bg-white shadow-xl">
+          <aside className="absolute inset-y-0 left-0 flex h-full w-[260px] max-w-[85vw] flex-col bg-white shadow-xl">
             <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
               <div className="flex items-center gap-2">
                 <BrainCircuit className="h-7 w-7 text-[#5140c9]" />

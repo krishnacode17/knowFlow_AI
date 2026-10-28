@@ -1,15 +1,18 @@
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = () => {
-  // Temporary state — baad mein AuthContext se aayegi
-  const isAuthenticated = true;
-
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  console.log(location.pathname);
-  console.log(location.search);
-  console.log(location.state);
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-gray-500">Checking authentication...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
